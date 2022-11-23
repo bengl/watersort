@@ -1,0 +1,8 @@
+[package]
+edition = "2021"
+name = "watersort"
+version = "0.1.0"
+[dependencies]
+dialoguer = "0.10.2"
+rand = "0.8.5"
+regex = "1.7.0"
