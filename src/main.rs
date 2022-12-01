@@ -39,7 +39,6 @@ impl Rack {
         for (i, color) in colors.iter().enumerate() {
             tubes[i / 4].push(*color as u8);
         }
-
         Rack(tubes)
     }
 
@@ -69,22 +68,26 @@ impl Rack {
     }
 }
 
+static INPUT_ERR: &str = "Must be exactly 2 letters";
+
 fn main() -> Result<(), std::io::Error> {
     let keys = "qwertyuiop";
-    let input_re = Regex::new(&*format!("^[{}][{}]$", keys, keys)).unwrap();
+    let input_re = Regex::new(&*format!("^[{}]\\s?[{}]$", keys, keys)).unwrap();
     let mut rack = Rack::new(8, 2);
-
     while !rack.is_solved() {
         rack.print(keys);
         let val = Input::new()
-            .with_prompt("Enter 2 tubes to transfer")
+            .with_prompt("Enter 2 tubes to transfer (or `exit` to exit)")
             .validate_with(|text: &String| -> Result<(), &str> {
-                input_re
-                    .is_match(text)
-                    .then_some(())
-                    .ok_or("Must be exactly 2 letters")
+                if text == "exit" {
+                    return Ok(());
+                }
+                input_re.is_match(text).then_some(()).ok_or(INPUT_ERR)
             })
-            .interact()?;
+            .interact()?.replace(" ", "");
+        if val == "exit" {
+            return Ok(());
+        }
         let split: Vec<usize> = val.chars().map(|c| keys.find(c).unwrap()).collect();
         rack.pour(split[0], split[1]);
     }
