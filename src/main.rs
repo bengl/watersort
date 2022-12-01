@@ -1,8 +1,8 @@
 use derive_more::{Deref, DerefMut};
 use dialoguer::Input;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{seq::SliceRandom, thread_rng};
 use regex::Regex;
+use std::iter::repeat;
 
 #[derive(Clone, Debug, Deref, DerefMut)]
 struct Tube(Vec<u8>);
@@ -17,11 +17,10 @@ impl Tube {
     }
 
     fn can_pour(&self, other: &Self) -> bool {
-        !(self.is_empty()
-            || self.is_solved()
-            || other.is_solved()
-            || other.len() == 4
-            || (!other.is_empty() && self.last().unwrap() != other.last().unwrap()))
+        !self.is_empty()
+            && !self.is_solved()
+            && other.len() != 4
+            && !(!other.is_empty() && self.last().unwrap() != other.last().unwrap())
     }
 }
 
@@ -29,12 +28,9 @@ impl Tube {
 struct Rack(Vec<Tube>);
 
 impl Rack {
-    fn new(full_tube_count: usize, empty_tube_count: usize) -> Rack {
-        let mut colors = Vec::with_capacity(full_tube_count * 4);
-        let mut tubes = vec![Tube::new_empty(); full_tube_count + empty_tube_count];
-        for color in 1..(full_tube_count + 1) {
-            colors.append(&mut vec![color; 4]);
-        }
+    fn new(full: usize, empty: usize) -> Rack {
+        let mut tubes = vec![Tube::new_empty(); full + empty];
+        let mut colors: Vec<_> = (0..full).flat_map(|n| repeat(n + 1).take(4)).collect();
         colors.shuffle(&mut thread_rng());
         for (i, color) in colors.iter().enumerate() {
             tubes[i / 4].push(*color as u8);
@@ -72,23 +68,22 @@ static INPUT_ERR: &str = "Must be exactly 2 letters";
 
 fn main() -> Result<(), std::io::Error> {
     let keys = "qwertyuiop";
-    let input_re = Regex::new(&*format!("^[{}]\\s?[{}]$", keys, keys)).unwrap();
+    let input_re = Regex::new(&format!("^exit|[{}]\\s?[{}]$", keys, keys)).unwrap();
     let mut rack = Rack::new(8, 2);
     while !rack.is_solved() {
         rack.print(keys);
         let val = Input::new()
             .with_prompt("Enter 2 tubes to transfer (or `exit` to exit)")
             .validate_with(|text: &String| -> Result<(), &str> {
-                if text == "exit" {
-                    return Ok(());
-                }
                 input_re.is_match(text).then_some(()).ok_or(INPUT_ERR)
             })
-            .interact()?.replace(" ", "");
+            .interact_text()?
+            .replace(' ', "");
         if val == "exit" {
+            println!("Goodbye!");
             return Ok(());
         }
-        let split: Vec<usize> = val.chars().map(|c| keys.find(c).unwrap()).collect();
+        let split: Vec<_> = val.chars().map(|c| keys.find(c).unwrap()).collect();
         rack.pour(split[0], split[1]);
     }
     rack.print(keys);
