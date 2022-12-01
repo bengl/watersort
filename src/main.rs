@@ -20,7 +20,7 @@ impl Tube {
         !self.is_empty()
             && !self.is_solved()
             && other.len() != 4
-            && !(!other.is_empty() && self.last().unwrap() != other.last().unwrap())
+            && (other.is_empty() || self.last().unwrap() == other.last().unwrap())
     }
 }
 
